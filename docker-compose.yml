@@ -1,0 +1,83 @@
+services:
+  video-processor:
+    # ── Build ──────────────────────────────────────────────
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+
+    # ── Container identity ─────────────────────────────────
+    container_name: video-processor
+
+    # ── Port mapping ───────────────────────────────────────
+    # HOST:CONTAINER — change the left side to use a different host port
+    ports:
+      - "${PORT:-3000}:3000"
+
+    # ── Environment variables ──────────────────────────────
+    # Values are read from .env file at compose runtime.
+    # Fallbacks are provided so the service runs even without a .env file.
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      TEMP_DIRECTORY: temp
+      UPLOAD_DIRECTORY: temp/uploads
+      OUTPUT_DIRECTORY: temp/outputs
+      BACKGROUND_MUSIC_PATH: assets/background.mp3
+      MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-524288000}
+      BACKGROUND_VOLUME: ${BACKGROUND_VOLUME:-0.15}
+      ORIGINAL_AUDIO_VOLUME: ${ORIGINAL_AUDIO_VOLUME:-1.0}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+
+    # ── Volume mounts ──────────────────────────────────────
+    # Named volumes persist data across container restarts.
+    # Bind mounts (./assets, ./logs) keep files on the host for easy access.
+    volumes:
+      # Background music — mount from host so you can swap tracks without rebuilding
+      - ./assets:/app/assets:ro
+
+      # Logs — written to host filesystem for easy monitoring
+      - ./logs:/app/logs
+
+      # Temp files — named volume, isolated inside Docker (no host clutter)
+      - video_temp:/app/temp
+
+    # ── Restart policy ─────────────────────────────────────
+    # unless-stopped: restarts on crash/reboot, but not when manually stopped
+    restart: unless-stopped
+
+    # ── Health check ───────────────────────────────────────
+    # Compose-level health check (mirrors the Dockerfile HEALTHCHECK)
+    # Docker marks the container healthy/unhealthy based on this
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # ── Resource limits ────────────────────────────────────
+    # Prevents runaway FFmpeg processes from starving the host.
+    # Adjust based on your server's capacity and expected video sizes.
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"       # Max 2 CPU cores for FFmpeg processing
+          memory: 512M      # Max 512MB RAM (FFmpeg streams, doesn't buffer)
+        reservations:
+          cpus: "0.25"      # Always reserve 0.25 CPU
+          memory: 128M      # Always reserve 128MB RAM
+
+    # ── Logging ────────────────────────────────────────────
+    # json-file driver with rotation — prevents log files from growing unbounded
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+# ── Named Volumes ──────────────────────────────────────────
+# temp volume: isolated from host, cleaned automatically when container is removed
+volumes:
+  video_temp:
+    driver: local
