@@ -18,7 +18,7 @@ services:
       UPLOAD_DIRECTORY: temp/uploads
       OUTPUT_DIRECTORY: temp/outputs
 
-      BACKGROUND_MUSIC_PATH: assets/background.mp3
+      BACKGROUND_MUSIC_PATH: assets/gone.m4a
 
       MAX_UPLOAD_SIZE: ${MAX_UPLOAD_SIZE:-524288000}
 
