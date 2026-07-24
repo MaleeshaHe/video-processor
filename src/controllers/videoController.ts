@@ -23,9 +23,9 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import path from 'path';
-import { processVideo, cleanupJobFiles } from '../services/videoProcessingService.js';
-import { AppError, HttpStatus } from '../types/index.js';
-import logger from '../utils/logger.js';
+import { processVideo, cleanupJobFiles } from '../services/videoProcessingService';
+import { AppError, HttpStatus } from '../types/index';
+import logger from '../utils/logger';
 
 // ─────────────────────────────────────────────
 // POST /process

@@ -30,9 +30,9 @@
 import { spawn } from 'child_process';
 import type { ChildProcessByStdio } from 'child_process';
 import type { Readable } from 'stream';
-import { AppError, HttpStatus } from '../types/index.js';
-import type { AudioMixOptions, FfmpegResult } from '../types/index.js';
-import logger from '../utils/logger.js';
+import { AppError, HttpStatus } from '../types/index';
+import type { AudioMixOptions, FfmpegResult } from '../types/index';
+import logger from '../utils/logger';
 
 // ─────────────────────────────────────────────
 // FFmpeg Binary Resolution
@@ -115,16 +115,18 @@ export function runFfmpeg(args: string[]): Promise<FfmpegResult> {
       const stderr = Buffer.concat(stderrChunks).toString('utf8');
 
       if (exitCode !== 0) {
+        // Grab last 800 chars — enough to catch the actual error line
+        const stderrTail = stderr.slice(-800).trim();
+
         logger.error('FFmpeg exited with non-zero code', {
           exitCode,
-          // Only log the last 500 chars of stderr — it can be very long
-          stderrTail: stderr.slice(-500),
+          stderrTail,
         });
 
         reject(
           new AppError(
             `FFmpeg processing failed (exit code ${exitCode}). ` +
-              `Check server logs for details.`,
+              `FFmpeg output: ${stderrTail || '(no output captured)'}`,
             HttpStatus.INTERNAL_SERVER_ERROR,
           ),
         );
@@ -169,25 +171,40 @@ export async function mixAudioWithVideo(options: AudioMixOptions): Promise<Ffmpe
   } = options;
 
   /**
-   * Construct the audio filter graph.
+   * Two filter graphs are built to handle both video-with-audio and
+   * video-without-audio inputs:
    *
-   * [0:a] — original video audio
-   * [1:a] — background music (looped)
-   * amix  — mixes both streams; duration=first means stop when first stream (video) ends
-   * dropout_transition=0 — no fade-out when a stream ends (clean cut)
+   *  audioFilterWithOriginal — primary path (video HAS audio):
+   *    [0:a]volume=X[orig];[1:a]volume=Y[bg];[orig][bg]amix...[aout]
+   *
+   *  audioFilterBgOnly — fallback path (video has NO audio track):
+   *    [1:a]volume=Y[aout]
+   *
+   * FFmpeg exits with code 234 (AVERROR_EXIT) when [0:a] is referenced
+   * but the video has no audio stream. We catch that case and retry with
+   * the bg-only filter so silent/muted videos are handled gracefully.
    */
-  const audioFilter = [
+
+  // Primary filter: mix original video audio with background music
+  const audioFilterWithOriginal = [
     `[0:a]volume=${originalAudioVolume}[orig]`,
     `[1:a]volume=${backgroundVolume}[bg]`,
     `[orig][bg]amix=inputs=2:duration=first:dropout_transition=0[aout]`,
   ].join(';');
 
-  const args: string[] = [
+  // Fallback filter: use only background music (for videos with no audio track)
+  const audioFilterBgOnly = [
+    `[1:a]volume=${backgroundVolume}[aout]`,
+  ].join(';');
+
+  const baseArgs = [
     '-y',                           // Overwrite output without prompting
     '-i', inputVideoPath,           // Input 0: video file
     '-stream_loop', '-1',           // Loop input 1 (music) indefinitely
     '-i', backgroundMusicPath,      // Input 1: background music
-    '-filter_complex', audioFilter, // Audio mixing filter graph
+  ];
+
+  const outputArgs = [
     '-map', '0:v',                  // Map video stream from input 0
     '-map', '[aout]',               // Map mixed audio from filter graph
     '-c:v', 'copy',                 // Copy video stream — no re-encode
@@ -199,6 +216,12 @@ export async function mixAudioWithVideo(options: AudioMixOptions): Promise<Ffmpe
     outputPath,                     // Output file
   ];
 
+  const args: string[] = [
+    ...baseArgs,
+    '-filter_complex', audioFilterWithOriginal,
+    ...outputArgs,
+  ];
+
   logger.info('Starting FFmpeg audio mix', {
     inputVideo: inputVideoPath,
     backgroundMusic: backgroundMusicPath,
@@ -207,7 +230,48 @@ export async function mixAudioWithVideo(options: AudioMixOptions): Promise<Ffmpe
     originalAudioVolume,
   });
 
-  return runFfmpeg(args);
+  try {
+    return await runFfmpeg(args);
+  } catch (err) {
+    // Exit code 234 (AVERROR_EXIT) commonly occurs when the video has no audio
+    // stream and [0:a] cannot be resolved. Retry using background music only.
+    //
+    // Common FFmpeg stderr phrases when the input has no audio track:
+    //   "matches no streams"          — [0:a] pad cannot be connected
+    //   "does not contain any stream" — stream specifier found nothing
+    //   "Output file does not contain any stream"
+    //   "Finishing stream 0:0"        — FFmpeg force-exits mid-encode
+    //   "Error binding filtergraph"   — confirmed: [0:a] missing EINVAL
+    //   "Invalid argument"            — AVERROR(EINVAL) from filter binding
+    const isNoAudioError =
+      err instanceof AppError &&
+      (err.message.includes('matches no streams') ||
+        err.message.includes('does not contain any stream') ||
+        err.message.includes('Finishing stream') ||
+        err.message.includes('Output file #0 does not contain') ||
+        err.message.includes('Error binding filtergraph') ||
+        err.message.includes('Invalid argument') ||
+        // exit code 234 with no stderr detail is also diagnostic
+        (err.message.includes('exit code 234') && err.message.includes('(no output captured)')));
+
+    if (!isNoAudioError) {
+      throw err; // Not the no-audio case — propagate original error
+    }
+
+    logger.warn(
+      'FFmpeg audio mix failed — video may have no audio track. ' +
+        'Retrying with background music only.',
+      { inputVideo: inputVideoPath },
+    );
+
+    const fallbackArgs: string[] = [
+      ...baseArgs,
+      '-filter_complex', audioFilterBgOnly,
+      ...outputArgs,
+    ];
+
+    return runFfmpeg(fallbackArgs);
+  }
 }
 
 // ─────────────────────────────────────────────

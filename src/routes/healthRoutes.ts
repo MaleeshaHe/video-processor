@@ -12,9 +12,9 @@
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import config from '../config/index.js';
-import type { ApiResponse, HealthCheckData } from '../types/index.js';
-import { HttpStatus } from '../types/index.js';
+import config from '../config/index';
+import type { ApiResponse, HealthCheckData } from '../types/index';
+import { HttpStatus } from '../types/index';
 
 const router = Router();
 

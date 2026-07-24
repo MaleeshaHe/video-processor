@@ -26,11 +26,11 @@
 
 import http from 'http';
 import path from 'path';
-import app from './app.js';
-import config from './config/index.js';
-import logger from './utils/logger.js';
-import { ensureDirectoriesExist, fileExists } from './utils/fileSystem.js';
-import { verifyFfmpegInstallation } from './services/ffmpegService.js';
+import app from './app';
+import config from './config/index';
+import logger from './utils/logger';
+import { ensureDirectoriesExist, fileExists } from './utils/fileSystem';
+import { verifyFfmpegInstallation } from './services/ffmpegService';
 
 // ─────────────────────────────────────────────
 // Startup Sequence

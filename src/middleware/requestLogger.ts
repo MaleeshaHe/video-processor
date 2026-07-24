@@ -15,8 +15,8 @@
 
 import morgan from 'morgan';
 import type { Request, Response } from 'express';
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
+import logger from '../utils/logger';
+import config from '../config/index';
 
 // ─────────────────────────────────────────────
 // Custom Morgan Write Stream

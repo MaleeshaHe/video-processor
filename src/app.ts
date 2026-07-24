@@ -21,11 +21,11 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import compression from 'compression';
-import config from './config/index.js';
-import requestLogger from './middleware/requestLogger.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import healthRouter from './routes/healthRoutes.js';
-import videoRouter from './routes/videoRoutes.js';
+import config from './config/index';
+import requestLogger from './middleware/requestLogger';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import healthRouter from './routes/healthRoutes';
+import videoRouter from './routes/videoRoutes';
 
 // ─────────────────────────────────────────────
 // App Factory

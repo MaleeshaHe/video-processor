@@ -23,17 +23,17 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import config from '../config/index.js';
-import { AppError, HttpStatus } from '../types/index.js';
-import type { VideoJob, ProcessingResult } from '../types/index.js';
-import { mixAudioWithVideo } from './ffmpegService.js';
+import config from '../config/index';
+import { AppError, HttpStatus } from '../types/index';
+import type { VideoJob, ProcessingResult } from '../types/index';
+import { mixAudioWithVideo } from './ffmpegService';
 import {
   generateOutputPath,
   fileExists,
   getFileSizeBytes,
   deleteFiles,
-} from '../utils/fileSystem.js';
-import logger from '../utils/logger.js';
+} from '../utils/fileSystem';
+import logger from '../utils/logger';
 
 // ─────────────────────────────────────────────
 // Job Builder

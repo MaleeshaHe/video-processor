@@ -10,8 +10,8 @@
 
 import dotenv from 'dotenv';
 import path from 'path';
-import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES } from '../types/index.js';
-import type { AppConfig } from '../types/index.js';
+import { ALLOWED_EXTENSIONS, ALLOWED_MIME_TYPES } from '../types/index';
+import type { AppConfig } from '../types/index';
 
 // Load .env file before reading any variables
 dotenv.config();

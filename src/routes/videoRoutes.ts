@@ -14,8 +14,8 @@
  */
 
 import { Router } from 'express';
-import upload from '../middleware/upload.js';
-import { handleProcessVideo } from '../controllers/videoController.js';
+import upload from '../middleware/upload';
+import { handleProcessVideo } from '../controllers/videoController';
 
 const router = Router();
 

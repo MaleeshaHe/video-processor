@@ -19,10 +19,10 @@
 
 import type { NextFunction, Request, Response } from 'express';
 import { MulterError } from 'multer';
-import { AppError, HttpStatus } from '../types/index.js';
-import type { ApiResponse } from '../types/index.js';
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
+import { AppError, HttpStatus } from '../types/index';
+import type { ApiResponse } from '../types/index';
+import logger from '../utils/logger';
+import config from '../config/index';
 
 // ─────────────────────────────────────────────
 // Multer Error Message Mapping

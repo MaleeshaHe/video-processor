@@ -18,10 +18,10 @@
 import multer, { type FileFilterCallback } from 'multer';
 import path from 'path';
 import type { Request } from 'express';
-import config from '../config/index.js';
-import { AppError, HttpStatus } from '../types/index.js';
-import { generateUploadPath } from '../utils/fileSystem.js';
-import logger from '../utils/logger.js';
+import config from '../config/index';
+import { AppError, HttpStatus } from '../types/index';
+import { generateUploadPath } from '../utils/fileSystem';
+import logger from '../utils/logger';
 
 // ─────────────────────────────────────────────
 // Storage Engine
